@@ -16,7 +16,7 @@ const BackHeaders: React.FC<Props> = ({ judul, aksi }) => {
           <Entypo name="chevron-left" size={24} color="white" />
         </TouchableOpacity>
       </View>
-      <View className="w-[20%] justify-center items-center">
+      <View className="w-[30%] justify-center items-center">
         <Text className="text-lg font-bold text-center text-white">
           {judul}
         </Text>

@@ -29,6 +29,7 @@ import {
   useRemoveKamar,
   useUpdatePenghuni,
 } from "@/api/PenghuniAPI";
+import { router } from "expo-router";
 
 const kamar = () => {
   const [sudahBayar, setSudahBayar] = useState<Boolean>(false);
@@ -51,6 +52,7 @@ const kamar = () => {
   const [penghuniByKamarId, setPenghuniByKamarId] = useState<
     Record<number, PenghuniData | null>
   >({});
+  console.log(listKamar);
 
   useEffect(() => {
     const fetchPenghuniData = async () => {
@@ -130,7 +132,6 @@ const kamar = () => {
       const response = await updatePaymentStatus(kamarId, Number(newStatus));
 
       Alert.alert("Sukses", "Sukses Mengubah status pembayaran");
-      console.log(response);
     } catch (error) {
       console.error("Error updating payment status:", error);
       Alert.alert("Error", "Error Sistem!");
@@ -193,6 +194,13 @@ const kamar = () => {
     } catch (error) {
       Alert.alert("Error", "Gagal menambahkan penghuni");
     }
+  };
+
+  const checkKosan = () => {
+    if ((listKosan.length = 0)) {
+      return null;
+    }
+    return;
   };
 
   return (
@@ -273,7 +281,6 @@ const kamar = () => {
                 if (int > 0) newBool = true;
                 return newBool;
               };
-              console.log(sudahBayar);
               const penghuni =
                 kamar.Id !== undefined ? penghuniByKamarId[kamar.Id] : null;
               const handleModal = () => {
