@@ -1,16 +1,6 @@
 import db from "../database/conn";
 import { SQLError, SQLTransaction } from "expo-sqlite/legacy"; // Adjust import based on your library
-
-export interface KosanData {
-  Id?: number;
-  NamaKosan: string;
-  Kota: string;
-  Alamat: string;
-  Harga: string;
-  JumlahKamar: number;
-  TipeKosan: string;
-  ImageUri: string;
-}
+import { KosanData } from "@/types/DBtypes";
 
 // Get all Kosan
 export const useGetAllKosan = async (): Promise<any[]> => {

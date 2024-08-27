@@ -1,14 +1,6 @@
 import { SQLError, SQLTransaction } from "expo-sqlite/legacy";
 import db from "../database/conn";
-
-export interface KamarData {
-  Id?: number;
-  KosanId: number;
-  StatusKamar?: number;
-  TanggalMasuk?: string | null;
-  TanggalKeluar?: string | null;
-  StatusPembayaran?: number | null;
-}
+import { KamarData } from "@/types/DBtypes";
 
 // In your api/kamarAPI.ts
 export const useGetAllKamar = async (): Promise<KamarData[]> => {
@@ -35,7 +27,9 @@ export const useGetAllKamar = async (): Promise<KamarData[]> => {
   }
 };
 
-export const useGetKamarById = async (id: number) => {
+export const useGetKamarById = async (
+  id: number
+): Promise<KamarData | null> => {
   try {
     return new Promise((resolve, reject) => {
       db.transaction((tx) => {
@@ -67,18 +61,31 @@ export const useCreateKamar = async (data: KamarData): Promise<number> => {
   try {
     return new Promise<number>((resolve, reject) => {
       db.transaction((tx) => {
+        // Insert the new Kamar
         tx.executeSql(
-          "INSERT INTO Kamar (KosanId, StatusKamar, TanggalMasuk, TanggalKeluar, StatusPembayaran) VALUES (?, ?, ?, ?, ?)",
+          "INSERT INTO Kamar (KosanId, StatusKamar, NoKam, Harga, ImageUri) VALUES (?, ?, ?, ?, ?)",
           [
             data.KosanId,
             data.StatusKamar ?? 0,
-            data.TanggalMasuk ?? null,
-            data.TanggalKeluar ?? null,
-            data.StatusPembayaran ?? null,
+            data.NoKam,
+            data.Harga ?? null,
+            data.ImageUri ?? null,
           ],
           (_, result) => {
             if (result.insertId !== undefined) {
-              resolve(result.insertId);
+              // Increment the JumlahKamar in Kosan table
+              tx.executeSql(
+                "UPDATE Kosan SET JumlahKamar = JumlahKamar + 1 WHERE Id = ?",
+                [data.KosanId],
+                () => {
+                  resolve(result.insertId as number);
+                },
+                (tx: SQLTransaction, error: SQLError) => {
+                  console.error("Failed to update JumlahKamar: ", error);
+                  reject(error);
+                  return false;
+                }
+              );
             } else {
               reject(new Error("Failed to get inserted ID for Kamar"));
             }
@@ -86,7 +93,7 @@ export const useCreateKamar = async (data: KamarData): Promise<number> => {
           (tx: SQLTransaction, error: SQLError) => {
             console.error("SQL Error: ", error);
             reject(error);
-            return false; // Return false to indicate failure
+            return false;
           }
         );
       });
@@ -106,13 +113,13 @@ export const useUpdateKamar = async (data: KamarData): Promise<void> => {
     await new Promise<void>((resolve, reject) => {
       db.transaction((tx) => {
         tx.executeSql(
-          "UPDATE Kamar SET KosanId = ?, StatusKamar = ?, TanggalMasuk = ?, TanggalKeluar = ?, StatusPembayaran = ? WHERE Id = ?",
+          "UPDATE Kamar SET KosanId = ?, StatusKamar = ?, NoKam = ?, Harga = ?, ImageUri = ? WHERE Id = ?",
           [
             data.KosanId,
             data.StatusKamar ?? 0,
-            data.TanggalMasuk ?? null,
-            data.TanggalKeluar ?? null,
-            data.StatusPembayaran ?? null,
+            data.NoKam ?? null,
+            data.Harga ?? null,
+            data.ImageUri ?? null,
             data.Id!,
           ],
           () => resolve(),
@@ -130,24 +137,39 @@ export const useUpdateKamar = async (data: KamarData): Promise<void> => {
   }
 };
 
-export const useDeleteKamar = async (id: number) => {
+export const useDeleteKamar = async (
+  id: number,
+  kosanId: number
+): Promise<void> => {
   try {
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       db.transaction((tx) => {
+        // Delete the Kamar
         tx.executeSql(
           "DELETE FROM Kamar WHERE id = ?",
           [id],
-          (_, { rows }) => {
-            if (rows.length > 0) {
-              resolve(rows._array[0]);
+          (_, result) => {
+            // Check if the delete operation was successful
+            if (result.rowsAffected > 0) {
+              // Decrement the JumlahKamar in the Kosan table
+              tx.executeSql(
+                "UPDATE Kosan SET JumlahKamar = JumlahKamar - 1 WHERE Id = ?",
+                [kosanId],
+                () => resolve(),
+                (tx: SQLTransaction, error: SQLError) => {
+                  console.error("Failed to decrement JumlahKamar: ", error);
+                  reject(error);
+                  return false;
+                }
+              );
             } else {
-              resolve(null);
+              resolve(); // Kamar was not found or deleted
             }
           },
           (tx: SQLTransaction, error: SQLError) => {
             console.error("SQL Error: ", error);
             reject(error);
-            return false; // Return false to indicate failure
+            return false;
           }
         );
       });
@@ -188,15 +210,7 @@ export const updateStatusKamar = async (
 };
 
 export const updatePaymentStatus = async (kamarId: number, status: number) => {
-  // let newStatus = null;
-  // if (status === true) {
-  //   newStatus = 1;
-  // }
-  // if (status === false) {
-  //   newStatus = 0;
-  // }
   console.log("status: " + status);
-  // console.log("NewStatus: " + newStatus);
   try {
     await new Promise<void>((resolve, reject) => {
       db.transaction((tx) => {
@@ -247,6 +261,30 @@ export const countKamar = async () => {
         tx.executeSql(
           "SELECT COUNT(*) AS total_kamar FROM Kamar",
           [],
+          (_, { rows }) => {
+            resolve(rows._array[0].total_kamar);
+          },
+          (tx: SQLTransaction, error: SQLError) => {
+            console.error("SQL Error: ", error);
+            reject(error);
+            return false;
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error("Error counting Kamar:", error);
+    throw error;
+  }
+};
+
+export const countKamarByKosan = async (id: number) => {
+  try {
+    return new Promise((resolve, reject) => {
+      db.transaction((tx) => {
+        tx.executeSql(
+          "SELECT COUNT(*) AS total_kamar FROM Kamar WHERE KosanId = ?;",
+          [id],
           (_, { rows }) => {
             resolve(rows._array[0].total_kamar);
           },

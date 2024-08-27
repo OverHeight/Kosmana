@@ -6,10 +6,24 @@ import {
   LayoutAnimation,
   Alert,
 } from "react-native";
-import { AntDesign } from "@expo/vector-icons";
+import { AntDesign, Entypo } from "@expo/vector-icons";
 import { useDeletePenghuni } from "@/api/PenghuniAPI";
 
-const Accordion = ({ title, children, penggunaId }) => {
+interface AccordionProps {
+  title: string;
+  children: React.ReactNode;
+  penggunaId: number;
+  options?: boolean;
+  optionPress?: (penggunaId: number) => void;
+}
+
+const Accordion: React.FC<AccordionProps> = ({
+  title,
+  children,
+  penggunaId,
+  options,
+  optionPress,
+}) => {
   const [expanded, setExpanded] = useState(false);
   const toggleExpand = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -27,13 +41,25 @@ const Accordion = ({ title, children, penggunaId }) => {
   };
   return (
     <View className="border-b border-gray-300 overflow-hidden">
-      <TouchableOpacity
-        onLongPress={handleHold}
-        onPress={toggleExpand}
-        className={"flex-row justify-between items-center px-4 py-2 bg-white"}
-      >
-        <Text className="text-base font-semibold">{title}</Text>
-      </TouchableOpacity>
+      <View className="flex-row justify-between">
+        <TouchableOpacity
+          onLongPress={handleHold}
+          onPress={toggleExpand}
+          className={`flex-row justify-between items-center px-4 py-2 bg-white ${
+            options ? "w-[85%]" : "w-full"
+          } `}
+        >
+          <Text className="text-base font-semibold">{title}</Text>
+        </TouchableOpacity>
+        {options ? (
+          <TouchableOpacity
+            onPress={() => optionPress?.(penggunaId)}
+            className="flex w-[15%] bg-white justify-center items-center"
+          >
+            <Entypo name="dots-three-horizontal" size={16} color="black" />
+          </TouchableOpacity>
+        ) : null}
+      </View>
       {expanded && <View className="p-4 bg-gray-100">{children}</View>}
     </View>
   );

@@ -2,37 +2,40 @@ import React, { useMemo, useState } from "react";
 import {
   Button,
   Image,
-  View,
+  ScrollView,
   StyleSheet,
   Text,
   Pressable,
   Alert,
+  View,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import BackHeaders from "@/components/layouts/BackHeaders";
-import * as FileSystem from "expo-file-system";
-import {
-  GestureHandlerRootView,
-  TextInput,
-} from "react-native-gesture-handler";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { RadioButtonProps, RadioGroup } from "react-native-radio-buttons-group";
 import { Picker } from "@react-native-picker/picker";
 import Input from "@/components/inputs";
-import { useCreateKosan, KosanData } from "@/api/kosanAPI";
-import { useCreateKamar, KamarData } from "@/api/kamarAPI";
+import { useCreateKosan } from "@/api/kosanAPI";
+import { useCreateKamar } from "@/api/kamarAPI";
+import { KamarData, KosanData } from "@/types/DBtypes";
 
-export default function tambahkost() {
+type JumlahKamarType = number | "custom";
+
+export default function TambahKost() {
   const [payload, setPayload] = useState<Partial<KosanData>>({
     NamaKosan: "",
-    Harga: "",
+    Harga: 0,
     Kota: "",
     Alamat: "",
   });
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [tipeKosan, setTipeKosan] = useState<string | undefined>(undefined);
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
-  const [jumlahKamar, setJumlahKamar] = useState<number>(0);
+  const [jumlahKamar, setJumlahKamar] = useState<JumlahKamarType>(0);
+  const [customJumlahKamar, setCustomJumlahKamar] = useState<string>("");
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -56,8 +59,7 @@ export default function tambahkost() {
   };
 
   const handleChange = (name: keyof KosanData, value: any) => {
-    console.log(name, value);
-    setPayload((prev: any) => ({
+    setPayload((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -70,34 +72,51 @@ export default function tambahkost() {
         return;
       }
 
+      const finalJumlahKamar =
+        jumlahKamar === "custom"
+          ? parseInt(customJumlahKamar, 10)
+          : jumlahKamar;
+
+      if (isNaN(finalJumlahKamar) || finalJumlahKamar <= 0) {
+        Alert.alert("Error", "Masukkan jumlah kamar yang valid!");
+        return;
+      }
+
       const kosanData: KosanData = {
         ...payload,
-        ImageUri: imageUri,
-        JumlahKamar: jumlahKamar,
+        JumlahKamar: finalJumlahKamar,
         TipeKosan: tipeKosan || "",
         NamaKosan: payload.NamaKosan || "",
-        Harga: payload.Harga || "",
+        Harga: payload.Harga || 0,
         Kota: payload.Kota || "",
         Alamat: payload.Alamat || "",
+        ImageUri: imageUri,
       };
       const kosanId = await useCreateKosan(kosanData);
 
-      const kamarData: KamarData = {
-        KosanId: kosanId,
-      };
       const createKamar = async () => {
-        const kamarIds = [];
-        for (let i = 0; i < jumlahKamar; i++) {
-          const kamarList = await useCreateKamar(kamarData);
-          console.log("added new kamar to kosan " + kosanId);
+        let kamarIds = [];
+        const finalJumlahKamar =
+          jumlahKamar === "custom"
+            ? parseInt(customJumlahKamar, 10)
+            : jumlahKamar;
+
+        if (isNaN(finalJumlahKamar) || finalJumlahKamar <= 0) {
+          throw new Error("Invalid number of rooms");
+        }
+
+        for (let i = 1; i <= finalJumlahKamar; i++) {
+          const kamarPayload: KamarData = {
+            KosanId: kosanId,
+            Harga: Number(payload.Harga),
+            NoKam: i,
+          };
+          const kamarList = await useCreateKamar(kamarPayload);
           kamarIds.push(kamarList);
         }
+        return kamarIds;
       };
 
-      const kamarId = await createKamar();
-
-      console.log("Sukses menambah kosan", kosanId);
-      console.log("Sukses menambah kamar", kamarId);
       Alert.alert("Sukses", "Sukses Menambah data Kosan dan Kamar");
     } catch (error) {
       console.error("isi Payload: ", payload);
@@ -114,64 +133,91 @@ export default function tambahkost() {
     []
   );
 
-  const NoKam = Array.from({ length: 8 }, (_, i) => i + 1);
+  const NoKam: JumlahKamarType[] = [
+    ...Array.from({ length: 8 }, (_, i) => i + 1),
+    "custom",
+  ];
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={styles.container}>
       <SafeAreaProvider>
         <BackHeaders aksi={""} judul={"Tambah Kost"} />
-        <View style={styles.container} className="bg-gray-200">
-          <Button title="Pick an image from camera roll" onPress={pickImage} />
-          <View tw="my-2">
-            {imageUri && (
-              <Image source={{ uri: imageUri }} style={styles.image} />
-            )}
-          </View>
-          <View className="flex justify-center items-center">
-            <View tw="w-screen px-4 gap-4">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.keyboardAvoidingView}
+        >
+          <ScrollView contentContainerStyle={styles.mainView}>
+            <View style={styles.imageSection}>
+              {imageUri ? (
+                <Image source={{ uri: imageUri }} style={styles.image} />
+              ) : (
+                <View style={styles.imagePlaceholder}>
+                  <Text style={styles.imagePlaceholderText}>No Image</Text>
+                </View>
+              )}
+              <Pressable onPress={pickImage} style={styles.imageButton}>
+                <Text style={styles.imageButtonText}>Choose Image</Text>
+              </Pressable>
+            </View>
+            <View style={styles.formContainer}>
               <Input
                 type="text"
                 title="Nama Kosan"
                 placeholder="Input Nama Kosan disini"
-                className="mb-4"
+                style={styles.input}
                 onChange={(value: any) => handleChange("NamaKosan", value)}
               />
               <Input
                 type="text"
                 title="Kota"
                 placeholder="Input Kota disini"
-                className="mb-4 bg-neutral-300"
+                style={styles.input}
                 onChange={(value: any) => handleChange("Kota", value)}
               />
               <Input
                 type="text"
                 title="Alamat"
                 placeholder="Input Alamat disini"
-                className="mb-4"
+                style={styles.input}
                 onChange={(value: any) => handleChange("Alamat", value)}
               />
               <Input
-                type="text"
+                type="number"
                 title="Harga"
                 placeholder="Input Harga disini"
-                className="mb-4"
+                style={styles.input}
                 onChange={(value: any) => handleChange("Harga", value)}
               />
-              <View tw="px-6">
-                <Text tw="text-md font-bold">Jumlah Kamar</Text>
-                <View className="bg-neutral-300">
-                  <Picker
-                    selectedValue={jumlahKamar}
-                    onValueChange={(value) => setJumlahKamar(value)}
-                  >
-                    {NoKam.map((e) => (
-                      <Picker.Item key={e} label={e.toString()} value={e} />
-                    ))}
-                  </Picker>
-                </View>
+              <View style={styles.pickerContainer}>
+                <Text style={styles.label}>Jumlah Kamar</Text>
+                <Picker
+                  selectedValue={jumlahKamar}
+                  onValueChange={(value: JumlahKamarType) =>
+                    setJumlahKamar(value)
+                  }
+                  style={styles.picker}
+                >
+                  {NoKam.map((e) => (
+                    <Picker.Item
+                      key={e.toString()}
+                      label={e === "custom" ? "Tambah sendiri" : e.toString()}
+                      value={e}
+                    />
+                  ))}
+                </Picker>
               </View>
-              <View tw="px-6">
-                <Text tw="text-md font-bold">Tipe Kosan</Text>
+              {jumlahKamar === "custom" && (
+                <Input
+                  type="number"
+                  title="Jumlah Kamar (Custom)"
+                  placeholder="Masukkan jumlah kamar"
+                  style={styles.input}
+                  value={customJumlahKamar}
+                  onChange={(value: string) => setCustomJumlahKamar(value)}
+                />
+              )}
+              <View style={styles.radioContainer}>
+                <Text style={styles.label}>Tipe Kosan</Text>
                 <RadioGroup
                   layout="row"
                   radioButtons={radioButtons}
@@ -179,19 +225,12 @@ export default function tambahkost() {
                   selectedId={selectedId}
                 />
               </View>
-              <View tw="px-6 items-center justify-center">
-                <Pressable
-                  onPress={handleSubmit}
-                  className="bg-green-600 p-4 rounded-xl"
-                >
-                  <Text className="text-white font-bold text-lg">
-                    Tambah Kosan
-                  </Text>
-                </Pressable>
-              </View>
+              <Pressable onPress={handleSubmit} style={styles.submitButton}>
+                <Text style={styles.submitButtonText}>Tambah Kosan</Text>
+              </Pressable>
             </View>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
@@ -200,12 +239,87 @@ export default function tambahkost() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#f0f0f0",
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  mainView: {
+    padding: 16,
+  },
+  imageSection: {
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
+    marginBottom: 20,
   },
   image: {
     width: 200,
     height: 200,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  imagePlaceholder: {
+    width: 200,
+    height: 200,
+    borderRadius: 10,
+    backgroundColor: "#ddd",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  imagePlaceholderText: {
+    color: "#888",
+    fontSize: 16,
+  },
+  imageButton: {
+    backgroundColor: "#4caf50",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  imageButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  formContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 16,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+  },
+  input: {
+    marginBottom: 16,
+  },
+  pickerContainer: {
+    marginBottom: 16,
+  },
+  picker: {
+    height: 50,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 5,
+  },
+  radioContainer: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 8,
+    color: "#333",
+  },
+  submitButton: {
+    backgroundColor: "#4caf50",
+    padding: 16,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  submitButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });

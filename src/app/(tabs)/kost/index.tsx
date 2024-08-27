@@ -10,17 +10,22 @@ import {
 import React, { useEffect, useState } from "react";
 import BackHeaders from "@/components/layouts/BackHeaders";
 import { AntDesign, FontAwesome, FontAwesome5 } from "@expo/vector-icons";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
-  KosanData,
   useDeleteKosan,
   useGetAllKosan,
   useGetKosanById,
 } from "@/api/kosanAPI";
 import Modal from "react-native-modal";
 import { Image } from "@rneui/base";
-import { deleteKamarByKosanId, useDeleteKamar } from "@/api/kamarAPI";
+import {
+  countKamarByKosan,
+  deleteKamarByKosanId,
+  useDeleteKamar,
+} from "@/api/kamarAPI";
+import { navFromKosan } from "@/hooks/kosanHook";
+import { KosanData } from "@/types/DBtypes";
 
 const kost = () => {
   const [listKosan, setListKosan] = useState<KosanData[]>([]);
@@ -46,9 +51,7 @@ const kost = () => {
     useGetAllKosan()
       .then((data) => setListKosan(data))
       .catch((e) => console.error(e.message));
-
-    console.log(listKosan);
-  }, []);
+  }, [listKosan]);
 
   const handleAlert = (id: number) => {
     Alert.alert("Reminder!", "Anda yakin ingin menghapus Kosan ini?", [
@@ -82,7 +85,9 @@ const kost = () => {
     setTriggerModal(!triggerModal);
     try {
       const response = await useGetKosanById(id);
-      setDataKosan(response);
+      const kamarCount = await countKamarByKosan(id);
+      setDataKosan({ ...response, JumlahKamar: kamarCount });
+      // setDataKosan(response);
       console.log(response);
     } catch (error) {
       console.error(error);
@@ -90,51 +95,70 @@ const kost = () => {
     }
   };
 
+  if (listKosan.length <= 0)
+    return (
+      <SafeAreaProvider>
+        <BackHeaders aksi={action} judul={"kost"} />
+        <View className="flex-1 justify-center items-center bg-white">
+          <Text className="text-gray-700 font-bold text-lg text-center">
+            Belum ada kosan
+          </Text>
+        </View>
+      </SafeAreaProvider>
+    );
+
   return (
     <SafeAreaProvider>
       <BackHeaders aksi={action} judul={"Kost"} />
       <Modal
         onBackButtonPress={() => setTriggerModal(!triggerModal)}
         isVisible={triggerModal}
+        backdropOpacity={0.4}
+        className="flex justify-center items-center"
       >
-        <View className="flex justify-center items-center rounded-2xl bg-white">
-          <View className="w-full py-2 flex-row justify-center items-center">
-            <Text className="font-bold text-2xl">Detail Kosan</Text>
+        <View className="w-11/12 rounded-2xl bg-white p-6">
+          <View className="w-full flex-row justify-center items-center mb-4">
+            <Text className="font-bold text-2xl text-center">Detail Kosan</Text>
             <Pressable
               onPress={() => setTriggerModal(false)}
-              className="absolute top-4 right-4"
+              className="absolute top-0 right-0"
             >
-              <AntDesign name="closecircle" size={16} color="black" />
+              <AntDesign name="closecircle" size={20} color="black" />
             </Pressable>
           </View>
-          <Image
-            source={
-              dataKosan.ImageUri ? { uri: dataKosan.ImageUri } : undefined
-            }
-            style={{
-              width: 320,
-              height: 200,
-              borderRadius: 10,
-              marginVertical: 4,
-            }}
-          />
-          <View className="my-4">
-            <Text className="text-xl font-bold">{dataKosan.NamaKosan}</Text>
-            <Text className="text-base">
-              Kota: {dataKosan.Kota && dataKosan.Kota}
+          <View className="w-full justify-center items-center mb-4">
+            <Image
+              source={
+                dataKosan.ImageUri ? { uri: dataKosan.ImageUri } : undefined
+              }
+              style={{
+                width: 280,
+                height: 160,
+                borderRadius: 10,
+                marginVertical: 4,
+              }}
+              className="w-full h-40 rounded-lg"
+            />
+          </View>
+          <View className="space-y-2">
+            <Text className="text-xl font-bold text-gray-900">
+              {dataKosan.NamaKosan}
             </Text>
-            <Text className="text-base">
-              Alamat: {dataKosan.Alamat && dataKosan.Alamat}
+            <Text className="text-base text-gray-700">
+              Kota: {dataKosan.Kota}
             </Text>
-            <Text className="text-base">
+            <Text className="text-base text-gray-700">
+              Alamat: {dataKosan.Alamat}
+            </Text>
+            <Text className="text-base text-gray-700">
               Harga: Rp{" "}
               {new Intl.NumberFormat("id-ID").format(Number(dataKosan.Harga))}
             </Text>
-            <Text className="text-base">
-              Jumlah Kamar: {dataKosan.JumlahKamar && dataKosan.JumlahKamar}
+            <Text className="text-base text-gray-700">
+              Jumlah Kamar: {dataKosan.JumlahKamar}
             </Text>
-            <Text className="text-base">
-              Tipe Kosan: {dataKosan.TipeKosan && dataKosan.TipeKosan}
+            <Text className="text-base text-gray-700">
+              Tipe Kosan: {dataKosan.TipeKosan}
             </Text>
           </View>
         </View>
@@ -181,12 +205,16 @@ const kost = () => {
                 </View>
                 <View className="flex-1 flex-row">
                   <View className="flex-1 justify-end items-start">
-                    <View className="flex-row justify-center items-center gap-x-2 bg-amber-400/50 rounded-full py-1 px-3 mb-5 ml-4">
+                    <Pressable
+                      onPress={() => navFromKosan(Number(e.Id))}
+                      className="flex-row justify-center items-center gap-x-2 bg-amber-400/50 rounded-full py-1 px-3 mb-5 ml-4"
+                    >
                       <FontAwesome5 name="bed" size={12} color="white" />
                       <Text className="text-md text-white font-bold text-center">
-                        {e.JumlahKamar} kamar
+                        {e.hasOwnProperty("JumlahKamar") ? e.JumlahKamar : 0}{" "}
+                        kamar
                       </Text>
-                    </View>
+                    </Pressable>
                   </View>
                   <View className="flex-1 justify-end items-end">
                     <View className="mb-4">

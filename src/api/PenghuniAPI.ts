@@ -1,16 +1,6 @@
 import { SQLError, SQLTransaction } from "expo-sqlite/legacy";
 import db from "../database/conn";
-
-export interface PenghuniData {
-  Id?: number;
-  Nama: string;
-  Umur: number;
-  JenisKelamin: string;
-  NoTelp: string;
-  IdKamar?: number;
-  FotoPenghuni?: string;
-  FotoKTP?: string;
-}
+import { PenghuniData } from "@/types/DBtypes";
 
 export const useGetAllPenghuni = async (): Promise<PenghuniData[]> => {
   try {
@@ -18,6 +8,30 @@ export const useGetAllPenghuni = async (): Promise<PenghuniData[]> => {
       db.transaction((tx) => {
         tx.executeSql(
           "SELECT * FROM Penghuni",
+          [],
+          (_, { rows }) => {
+            resolve(rows._array as PenghuniData[]);
+          },
+          (tx: SQLTransaction, error: SQLError) => {
+            console.error("SQL Error: ", error);
+            reject(error);
+            return false;
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error("Error fetching Penghuni data: ", error);
+    throw error;
+  }
+};
+
+export const useGetAllPenghuniAsc = async (): Promise<PenghuniData[]> => {
+  try {
+    return new Promise((resolve, reject) => {
+      db.transaction((tx) => {
+        tx.executeSql(
+          "SELECT * FROM Penghuni ORDER BY Nama",
           [],
           (_, { rows }) => {
             resolve(rows._array as PenghuniData[]);
@@ -73,13 +87,12 @@ export const useCreatePenghuni = async (
     return new Promise<number>((resolve, reject) => {
       db.transaction((tx) => {
         tx.executeSql(
-          "INSERT INTO Penghuni (Nama, Umur, JenisKelamin, NoTelp, IdKamar, FotoPenghuni, FotoKTP) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO Penghuni (Nama, Umur, JenisKelamin, NoTelp, FotoPenghuni, FotoKTP) VALUES (?, ?, ?, ?, ?, ?)",
           [
             data.Nama,
             data.Umur,
             data.JenisKelamin,
             data.NoTelp,
-            data.IdKamar ?? null,
             data.FotoPenghuni ?? null,
             data.FotoKTP ?? null,
           ],
@@ -113,13 +126,12 @@ export const useUpdatePenghuni = async (data: PenghuniData): Promise<void> => {
     await new Promise<void>((resolve, reject) => {
       db.transaction((tx) => {
         tx.executeSql(
-          "UPDATE Penghuni SET Nama = ?, Umur = ?, JenisKelamin = ?, NoTelp = ?, IdKamar = ?, FotoPenghuni = ?, FotoKTP = ? WHERE Id = ?",
+          "UPDATE Penghuni SET Nama = ?, Umur = ?, JenisKelamin = ?, NoTelp = ?, FotoPenghuni = ?, FotoKTP = ? WHERE Id = ?",
           [
             data.Nama,
             data.Umur,
             data.JenisKelamin,
             data.NoTelp,
-            data.IdKamar ?? null,
             data.FotoPenghuni ?? null,
             data.FotoKTP ?? null,
             data.Id!,

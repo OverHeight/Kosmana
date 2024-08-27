@@ -1,4 +1,5 @@
 import {
+  Alert,
   Image,
   Platform,
   SafeAreaView,
@@ -8,10 +9,6 @@ import {
   View,
 } from "react-native";
 
-import { HelloWave } from "@/components/HelloWave";
-import ParallaxScrollView from "@/components/ParallaxScrollView";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
 import Headers from "@/components/layouts/Headers";
 import {
   AntDesign,
@@ -53,7 +50,7 @@ export default function HomeScreen() {
     };
 
     fetchCounts();
-  }, [counts]);
+  }, [counts, refreshing]);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -114,7 +111,15 @@ export default function HomeScreen() {
                 </View>
                 <Text className="text-white">Penghuni</Text>
               </TouchableOpacity>
-              <View className="justify-center items-center gap-1">
+              <TouchableOpacity
+                onPress={() =>
+                  Alert.alert(
+                    "Fitur belum ada",
+                    "Maaf sekali fitur ini belum ada"
+                  )
+                }
+                className="justify-center items-center gap-1"
+              >
                 <View className="bg-emerald-500 rounded-full p-2 border border-white ">
                   <View className="h-9 w-9 justify-center items-center">
                     <MaterialCommunityIcons
@@ -125,41 +130,26 @@ export default function HomeScreen() {
                   </View>
                 </View>
                 <Text className="text-white">Lainnya</Text>
-              </View>
+              </TouchableOpacity>
             </View>
             <View className="flex justify-center bg-gray-200 pt-1 pb-4 mt-28 absolute left-6 right-6 rounded-lg border border-gray-400">
-              <View className="my-3 p-4">
-                <Text className="text-2xl font-bold">
-                  Selamat Datang, Users!
-                </Text>
+              <View className="my-2 p-4">
+                <Text className="text-2xl font-bold">Selamat Datang!</Text>
               </View>
-              <View className="flex-row justify-between mt-1 mx-5">
+              <View className="flex-row justify-between mx-5">
                 <View>
                   <View>
-                    <Text className="text-lg font-bold">
-                      Aplikasi Kost untuk mempermudah pendataan Kost Anda
+                    <Text className="text-lg font-medium">
+                      Kosmana adalah aplikasi Kost untuk mempermudah pendataan
+                      Kost Anda
                     </Text>
-                  </View>
-                  <View>
-                    <View className="flex-row mt-5 justify-left gap-x-2">
-                      <View className="gap-1 bg-green-600 px-4 py-2 rounded-full">
-                        <View className="justify-center items-center">
-                          <Text className="text-white">Kelola Kost</Text>
-                        </View>
-                      </View>
-                      <View className="gap-1 border border-green-600 px-4 py-2 rounded-full">
-                        <View className="justify-center items-center">
-                          <Text className="text-green-600">Buat Kost</Text>
-                        </View>
-                      </View>
-                    </View>
                   </View>
                 </View>
               </View>
             </View>
           </View>
         </View>
-        <View className="flex mt-40">
+        <View className="flex mt-24">
           <View className="mt-16">
             <View className="my-2">
               <View className="flex-row justify-evenly">
