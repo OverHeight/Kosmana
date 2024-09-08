@@ -1,6 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  Button,
   Image,
   ScrollView,
   StyleSheet,
@@ -10,24 +9,43 @@ import {
   View,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import BackHeaders from "@/components/layouts/BackHeaders";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { RadioButtonProps, RadioGroup } from "react-native-radio-buttons-group";
 import { Picker } from "@react-native-picker/picker";
 import Input from "@/components/inputs";
-import { useCreateKosan } from "@/api/kosanAPI";
+import {
+  useCreateKosan,
+  useUpdateKosan,
+  useGetKosanById,
+} from "@/api/kosanAPI";
 import { useCreateKamar } from "@/api/kamarAPI";
 import { KamarData, KosanData } from "@/types/DBtypes";
+import { router, useLocalSearchParams } from "expo-router";
+import BackHeaders from "@/components/layouts/BackHeaders";
 
 type JumlahKamarType = number | "custom";
 
 export default function TambahKost() {
+  const { id } = useLocalSearchParams();
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (Number(id) === 0 || null || NaN) {
+      setIsEditing(false);
+    } else if (Number(id) > 0) {
+      setIsEditing(true);
+    }
+  }, [id]);
+  console.log("id: ", Number(id));
+  console.log(isEditing);
+
   const [payload, setPayload] = useState<Partial<KosanData>>({
     NamaKosan: "",
-    Harga: 0,
+    Harga: null,
     Kota: "",
     Alamat: "",
   });
@@ -35,13 +53,36 @@ export default function TambahKost() {
   const [tipeKosan, setTipeKosan] = useState<string | undefined>(undefined);
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [jumlahKamar, setJumlahKamar] = useState<JumlahKamarType>(0);
+  const [isDisabled, setIsDisabled] = useState<boolean>(false);
   const [customJumlahKamar, setCustomJumlahKamar] = useState<string>("");
+
+  useEffect(() => {
+    if (isEditing) {
+      fetchKosanData();
+    }
+  }, [isEditing]);
+
+  const fetchKosanData = async () => {
+    try {
+      const kosanData = await useGetKosanById(Number(id));
+      if (kosanData) {
+        setPayload(kosanData);
+        setImageUri(kosanData.ImageUri || null);
+        setTipeKosan(kosanData.TipeKosan);
+        setSelectedId(kosanData.TipeKosan === "Laki-Laki" ? "1" : "2");
+        setJumlahKamar(kosanData.JumlahKamar);
+      }
+    } catch (error) {
+      console.error("Error fetching kosan data:", error);
+      Alert.alert("Error", "Failed to fetch kosan data");
+    }
+  };
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [4, 3],
+      aspect: [16, 9],
       quality: 1,
     });
 
@@ -59,27 +100,34 @@ export default function TambahKost() {
   };
 
   const handleChange = (name: keyof KosanData, value: any) => {
-    setPayload((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    if (name === "Harga") {
+      const numericValue = parseFloat(value.replace(/,/g, ""));
+      setPayload((prev) => ({
+        ...prev,
+        [name]: isNaN(numericValue) ? 0 : numericValue,
+      }));
+    } else {
+      setPayload((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handleSubmit = async () => {
+    setIsDisabled(true);
     try {
       if (!imageUri) {
         Alert.alert("Error", "Tambahkan gambar Kosan!");
+        setIsDisabled(false);
         return;
       }
 
-      const finalJumlahKamar =
-        jumlahKamar === "custom"
-          ? parseInt(customJumlahKamar, 10)
-          : jumlahKamar;
-
-      if (isNaN(finalJumlahKamar) || finalJumlahKamar <= 0) {
-        Alert.alert("Error", "Masukkan jumlah kamar yang valid!");
-        return;
+      let finalJumlahKamar: number;
+      if (jumlahKamar === "custom") {
+        finalJumlahKamar = parseInt(customJumlahKamar.replace(/,/g, ""), 10);
+      } else {
+        finalJumlahKamar = jumlahKamar as number;
       }
 
       const kosanData: KosanData = {
@@ -92,39 +140,43 @@ export default function TambahKost() {
         Alamat: payload.Alamat || "",
         ImageUri: imageUri,
       };
-      const kosanId = await useCreateKosan(kosanData);
 
-      const createKamar = async () => {
-        let kamarIds = [];
-        const finalJumlahKamar =
-          jumlahKamar === "custom"
-            ? parseInt(customJumlahKamar, 10)
-            : jumlahKamar;
+      if (isEditing) {
+        await useUpdateKosan(Number(id), kosanData);
+      } else {
+        const kosanId = await useCreateKosan(kosanData);
+        await createKamar(kosanId, finalJumlahKamar);
+      }
 
-        if (isNaN(finalJumlahKamar) || finalJumlahKamar <= 0) {
-          throw new Error("Invalid number of rooms");
-        }
-
-        for (let i = 1; i <= finalJumlahKamar; i++) {
-          const kamarPayload: KamarData = {
-            KosanId: kosanId,
-            Harga: Number(payload.Harga),
-            NoKam: i,
-          };
-          const kamarList = await useCreateKamar(kamarPayload);
-          kamarIds.push(kamarList);
-        }
-        return kamarIds;
-      };
-
-      Alert.alert("Sukses", "Sukses Menambah data Kosan dan Kamar");
+      setIsDisabled(false);
+      router.back();
+      Alert.alert(
+        "Sukses",
+        `Sukses ${isEditing ? "mengubah" : "menambah"} data Kosan dan Kamar`
+      );
     } catch (error) {
-      console.error("isi Payload: ", payload);
-      console.error("Gagal menambahkan kosan atau kamar: ", error);
-      Alert.alert("Gagal", "Gagal menambahkan kosan atau kamar");
+      setIsDisabled(false);
+      console.error(
+        `Gagal ${isEditing ? "mengubah" : "menambahkan"} kosan atau kamar: `,
+        error
+      );
+      Alert.alert(
+        "Gagal",
+        `Gagal ${isEditing ? "mengubah" : "menambahkan"} kosan atau kamar`
+      );
     }
   };
 
+  const createKamar = async (kosanId: number, jumlahKamar: number) => {
+    for (let i = 1; i <= jumlahKamar; i++) {
+      const kamarPayload: KamarData = {
+        KosanId: kosanId,
+        Harga: payload.Harga,
+        NoKam: i,
+      };
+      await useCreateKamar(kamarPayload);
+    }
+  };
   const radioButtons: RadioButtonProps[] = useMemo(
     () => [
       { id: "1", label: "Laki-Laki", value: "Laki-Laki" },
@@ -141,7 +193,10 @@ export default function TambahKost() {
   return (
     <GestureHandlerRootView style={styles.container}>
       <SafeAreaProvider>
-        <BackHeaders aksi={""} judul={"Tambah Kost"} />
+        <BackHeaders
+          aksi={""}
+          judul={isEditing ? "Edit Kost" : "Tambah Kost"}
+        />
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.keyboardAvoidingView}
@@ -156,7 +211,7 @@ export default function TambahKost() {
                 </View>
               )}
               <Pressable onPress={pickImage} style={styles.imageButton}>
-                <Text style={styles.imageButtonText}>Choose Image</Text>
+                <Text style={styles.imageButtonText}>Pilih Foto Kosan</Text>
               </Pressable>
             </View>
             <View style={styles.formContainer}>
@@ -165,6 +220,7 @@ export default function TambahKost() {
                 title="Nama Kosan"
                 placeholder="Input Nama Kosan disini"
                 style={styles.input}
+                value={payload.NamaKosan}
                 onChange={(value: any) => handleChange("NamaKosan", value)}
               />
               <Input
@@ -172,6 +228,7 @@ export default function TambahKost() {
                 title="Kota"
                 placeholder="Input Kota disini"
                 style={styles.input}
+                value={payload.Kota}
                 onChange={(value: any) => handleChange("Kota", value)}
               />
               <Input
@@ -179,42 +236,49 @@ export default function TambahKost() {
                 title="Alamat"
                 placeholder="Input Alamat disini"
                 style={styles.input}
+                value={payload.Alamat}
                 onChange={(value: any) => handleChange("Alamat", value)}
               />
               <Input
                 type="number"
                 title="Harga"
                 placeholder="Input Harga disini"
-                style={styles.input}
-                onChange={(value: any) => handleChange("Harga", value)}
+                value={payload.Harga?.toString()}
+                onChange={(value: string) => handleChange("Harga", value)}
               />
-              <View style={styles.pickerContainer}>
-                <Text style={styles.label}>Jumlah Kamar</Text>
-                <Picker
-                  selectedValue={jumlahKamar}
-                  onValueChange={(value: JumlahKamarType) =>
-                    setJumlahKamar(value)
-                  }
-                  style={styles.picker}
-                >
-                  {NoKam.map((e) => (
-                    <Picker.Item
-                      key={e.toString()}
-                      label={e === "custom" ? "Tambah sendiri" : e.toString()}
-                      value={e}
+              {isEditing ? null : (
+                <View style={styles.pickerContainer}>
+                  <Text style={styles.label}>Jumlah Kamar</Text>
+                  <Picker
+                    selectedValue={jumlahKamar}
+                    onValueChange={(value: JumlahKamarType) =>
+                      setJumlahKamar(value)
+                    }
+                    style={styles.picker}
+                  >
+                    {NoKam.map((value) => (
+                      <Picker.Item
+                        key={value.toString()}
+                        label={
+                          value === "custom"
+                            ? "Tambah sendiri"
+                            : value.toString()
+                        }
+                        value={value}
+                      />
+                    ))}
+                  </Picker>
+                  {jumlahKamar === "custom" && (
+                    <Input
+                      type="number"
+                      title="Jumlah Kamar (Custom)"
+                      placeholder="Masukkan jumlah kamar"
+                      style={styles.input}
+                      value={customJumlahKamar}
+                      onChange={(value: string) => setCustomJumlahKamar(value)}
                     />
-                  ))}
-                </Picker>
-              </View>
-              {jumlahKamar === "custom" && (
-                <Input
-                  type="number"
-                  title="Jumlah Kamar (Custom)"
-                  placeholder="Masukkan jumlah kamar"
-                  style={styles.input}
-                  value={customJumlahKamar}
-                  onChange={(value: string) => setCustomJumlahKamar(value)}
-                />
+                  )}
+                </View>
               )}
               <View style={styles.radioContainer}>
                 <Text style={styles.label}>Tipe Kosan</Text>
@@ -225,8 +289,21 @@ export default function TambahKost() {
                   selectedId={selectedId}
                 />
               </View>
-              <Pressable onPress={handleSubmit} style={styles.submitButton}>
-                <Text style={styles.submitButtonText}>Tambah Kosan</Text>
+              <Pressable
+                disabled={isDisabled}
+                onPress={handleSubmit}
+                style={[
+                  styles.submitButton,
+                  isDisabled && styles.disabledButton,
+                ]}
+              >
+                {isDisabled ? (
+                  <ActivityIndicator size="large" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.submitButtonText}>
+                    {isEditing ? "Update" : "Tambah"} Kosan
+                  </Text>
+                )}
               </Pressable>
             </View>
           </ScrollView>
@@ -235,7 +312,6 @@ export default function TambahKost() {
     </GestureHandlerRootView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -252,14 +328,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   image: {
-    width: 200,
-    height: 200,
+    width: 320,
+    height: 180,
     borderRadius: 10,
     marginBottom: 10,
   },
   imagePlaceholder: {
-    width: 200,
-    height: 200,
+    width: 320,
+    height: 180,
     borderRadius: 10,
     backgroundColor: "#ddd",
     justifyContent: "center",
@@ -316,6 +392,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     alignItems: "center",
+  },
+  disabledButton: {
+    backgroundColor: "#7fba7f",
   },
   submitButtonText: {
     color: "#fff",

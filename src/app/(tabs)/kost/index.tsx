@@ -6,18 +6,24 @@ import {
   Pressable,
   Alert,
   RefreshControl,
+  TouchableOpacity,
+  Modal,
 } from "react-native";
 import React, { useEffect, useState } from "react";
 import BackHeaders from "@/components/layouts/BackHeaders";
-import { AntDesign, FontAwesome, FontAwesome5 } from "@expo/vector-icons";
-import { Link, router } from "expo-router";
+import {
+  AntDesign,
+  Entypo,
+  FontAwesome,
+  FontAwesome5,
+} from "@expo/vector-icons";
+import { Link, router, useLocalSearchParams } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
   useDeleteKosan,
   useGetAllKosan,
   useGetKosanById,
 } from "@/api/kosanAPI";
-import Modal from "react-native-modal";
 import { Image } from "@rneui/base";
 import {
   countKamarByKosan,
@@ -41,7 +47,7 @@ const kost = () => {
     TipeKosan: "",
   });
   const action = (
-    <Link href={"/kost/tambahkost"}>
+    <Link href={"/kost/TambahKost/0"}>
       {" "}
       <AntDesign name="plus" size={24} color="white" />{" "}
     </Link>
@@ -54,13 +60,16 @@ const kost = () => {
   }, [listKosan]);
 
   const handleAlert = (id: number) => {
-    Alert.alert("Reminder!", "Anda yakin ingin menghapus Kosan ini?", [
+    Alert.alert("Reminder!", "Apa yang ingin anda lakukan dengan kosan ini?", [
       {
         text: "Batal",
         onPress: () => console.log("Cancel Pressed"),
-        style: "cancel",
       },
-      { text: "OK", onPress: () => handleDelete(id) },
+      {
+        text: "Edit Kosan",
+        onPress: () => router.navigate(`/kost/TambahKost/${id}`),
+      },
+      { text: "Hapus Kosan", onPress: () => handleDelete(id) },
     ]);
   };
 
@@ -111,55 +120,85 @@ const kost = () => {
     <SafeAreaProvider>
       <BackHeaders aksi={action} judul={"Kost"} />
       <Modal
-        onBackButtonPress={() => setTriggerModal(!triggerModal)}
-        isVisible={triggerModal}
-        backdropOpacity={0.4}
-        className="flex justify-center items-center"
+        visible={triggerModal}
+        onRequestClose={() => setTriggerModal(!triggerModal)}
+        animationType="fade"
+        transparent
+        style={{ margin: 0 }}
       >
-        <View className="w-11/12 rounded-2xl bg-white p-6">
-          <View className="w-full flex-row justify-center items-center mb-4">
-            <Text className="font-bold text-2xl text-center">Detail Kosan</Text>
-            <Pressable
-              onPress={() => setTriggerModal(false)}
-              className="absolute top-0 right-0"
-            >
-              <AntDesign name="closecircle" size={20} color="black" />
-            </Pressable>
-          </View>
-          <View className="w-full justify-center items-center mb-4">
-            <Image
-              source={
-                dataKosan.ImageUri ? { uri: dataKosan.ImageUri } : undefined
-              }
-              style={{
-                width: 280,
-                height: 160,
-                borderRadius: 10,
-                marginVertical: 4,
-              }}
-              className="w-full h-40 rounded-lg"
-            />
-          </View>
-          <View className="space-y-2">
-            <Text className="text-xl font-bold text-gray-900">
-              {dataKosan.NamaKosan}
-            </Text>
-            <Text className="text-base text-gray-700">
-              Kota: {dataKosan.Kota}
-            </Text>
-            <Text className="text-base text-gray-700">
-              Alamat: {dataKosan.Alamat}
-            </Text>
-            <Text className="text-base text-gray-700">
-              Harga: Rp{" "}
-              {new Intl.NumberFormat("id-ID").format(Number(dataKosan.Harga))}
-            </Text>
-            <Text className="text-base text-gray-700">
-              Jumlah Kamar: {dataKosan.JumlahKamar}
-            </Text>
-            <Text className="text-base text-gray-700">
-              Tipe Kosan: {dataKosan.TipeKosan}
-            </Text>
+        <View className="flex-1 justify-center items-center bg-black/50">
+          <View className="w-11/12 rounded-2xl bg-white p-6 shadow-lg max-h-[90%]">
+            <View className="w-full flex-row justify-between items-center mb-4">
+              <Text className="font-bold text-2xl text-emerald-500">
+                Detail Kosan
+              </Text>
+              <Pressable onPress={() => setTriggerModal(false)} className="p-2">
+                <AntDesign name="closecircle" size={20} color="#10b981" />
+              </Pressable>
+            </View>
+            <ScrollView>
+              <View className="w-full justify-center items-center mb-4">
+                <Image
+                  source={
+                    dataKosan.ImageUri ? { uri: dataKosan.ImageUri } : undefined
+                  }
+                  style={{
+                    width: 280,
+                    height: 160,
+                    borderRadius: 10,
+                    marginVertical: 4,
+                    resizeMode: "cover",
+                  }}
+                  className="w-full h-40 rounded-lg"
+                />
+              </View>
+              <View className="space-y-2">
+                <Text className="text-xl font-bold text-gray-900">
+                  {dataKosan.NamaKosan}
+                </Text>
+                <View className="flex-row justify-between">
+                  <Text className="text-base text-gray-700">Kota:</Text>
+                  <Text className="text-base text-gray-700">
+                    {dataKosan.Kota}
+                  </Text>
+                </View>
+                <View className="flex-row justify-between">
+                  <Text className="text-base text-gray-700">Alamat:</Text>
+                  <TouchableOpacity
+                    onPress={() => Alert.alert("Alamat", dataKosan.Alamat)}
+                  >
+                    <Text
+                      className="text-base text-gray-700"
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {dataKosan.Alamat}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <View className="flex-row justify-between">
+                  <Text className="text-base text-gray-700">Harga:</Text>
+                  <Text className="text-base text-gray-700">
+                    Rp{" "}
+                    {new Intl.NumberFormat("id-ID").format(
+                      Number(dataKosan.Harga)
+                    )}
+                  </Text>
+                </View>
+                <View className="flex-row justify-between">
+                  <Text className="text-base text-gray-700">Jumlah Kamar:</Text>
+                  <Text className="text-base text-gray-700">
+                    {dataKosan.JumlahKamar}
+                  </Text>
+                </View>
+                <View className="flex-row justify-between">
+                  <Text className="text-base text-gray-700">Tipe Kosan:</Text>
+                  <Text className="text-base text-gray-700">
+                    {dataKosan.TipeKosan}
+                  </Text>
+                </View>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -186,7 +225,7 @@ const kost = () => {
                 }}
                 imageStyle={{
                   borderRadius: 20,
-                  opacity: 0.4,
+                  opacity: 0.6,
                   backgroundColor: "black",
                 }}
               >
@@ -200,7 +239,11 @@ const kost = () => {
                     onPress={() => handleAlert(Number(e.Id))}
                     className="flex-1 justify-start items-end p-4"
                   >
-                    <FontAwesome name="trash" size={28} color="white" />
+                    <Entypo
+                      name="dots-three-vertical"
+                      size={24}
+                      color="white"
+                    />
                   </Pressable>
                 </View>
                 <View className="flex-1 flex-row">
@@ -211,8 +254,7 @@ const kost = () => {
                     >
                       <FontAwesome5 name="bed" size={12} color="white" />
                       <Text className="text-md text-white font-bold text-center">
-                        {e.hasOwnProperty("JumlahKamar") ? e.JumlahKamar : 0}{" "}
-                        kamar
+                        {e.JumlahKamar} kamar
                       </Text>
                     </Pressable>
                   </View>

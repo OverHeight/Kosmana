@@ -29,7 +29,7 @@ const PenghuniListItem: React.FC<PenghuniListItemProps> = ({
   return (
     <Accordion
       title={item.Nama}
-      penggunaId={item.Id}
+      penggunaId={Number(item.Id)}
       options={true}
       optionPress={(e: number) => handleMore(e)}
     >
@@ -72,7 +72,7 @@ const PenghuniListItem: React.FC<PenghuniListItemProps> = ({
             </Text>
           </TouchableOpacity>
           {isFotoVisible ? (
-            item.FotoPenghuni === null ? (
+            item.FotoPenghuni === "" ? (
               <View className="flex w-[50%] justify-center items-start">
                 <Text className="text-base text-red-500 font-medium">
                   Belum ada Foto Penghuni!
@@ -88,7 +88,7 @@ const PenghuniListItem: React.FC<PenghuniListItemProps> = ({
                   source={{ uri: item.FotoPenghuni }}
                   style={{
                     width: "100%",
-                    height: 200,
+                    height: 300,
                     alignSelf: "center",
                     marginVertical: 4,
                   }}
@@ -105,7 +105,7 @@ const PenghuniListItem: React.FC<PenghuniListItemProps> = ({
             <Text className="text-md font-bold text-white">Lihat Foto KTP</Text>
           </TouchableOpacity>
           {isFoto2Visible ? (
-            item.FotoKTP === null ? (
+            item.FotoKTP === "" ? (
               <View className="flex w-[50%] justify-center items-start">
                 <Text className="text-base text-red-500 font-medium">
                   Belum ada Foto KTP!
@@ -121,7 +121,7 @@ const PenghuniListItem: React.FC<PenghuniListItemProps> = ({
                   source={{ uri: item.FotoKTP }}
                   style={{
                     width: "100%",
-                    height: 200,
+                    height: 225,
                     alignSelf: "center",
                     marginVertical: 4,
                   }}

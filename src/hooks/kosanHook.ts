@@ -4,7 +4,7 @@ let kosanId = 0;
 
 export const navFromKosan = (idKosan: number) => {
   kosanId = idKosan;
-  router.push("/kamar");
+  router.push(`/kamar/${idKosan}`);
   console.log(idKosan);
   return idKosan;
 };

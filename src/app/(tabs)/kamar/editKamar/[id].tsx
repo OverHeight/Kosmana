@@ -1,21 +1,20 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Image, Button, Alert } from "react-native";
+import { View, Text, Image, Alert } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import BackHeaders from "@/components/layouts/BackHeaders";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useGetKamarById, useUpdateKamar } from "@/api/kamarAPI";
 import { KamarData } from "@/types/DBtypes";
-import { Button as RNEButton } from "@rneui/base";
-import Input from "@/components/inputs";
 import * as ImagePicker from "expo-image-picker";
 import { useKamarData } from "@/hooks/useKamarData";
+import { ScrollView, TouchableOpacity } from "react-native-gesture-handler";
+import { Button, Input } from "@rneui/base";
 
-const Index = () => {
+const editKamar = () => {
   const { id } = useLocalSearchParams();
   const { onRefresh } = useKamarData();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
   const [payload, setPayload] = useState<Partial<KamarData>>({
     Id: 0,
     KosanId: 0,
@@ -48,14 +47,10 @@ const Index = () => {
     fetchKamarData();
   }, [id]);
 
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
-
   const handleSave = async () => {
+    console.log("pressed Save");
     try {
       await useUpdateKamar(payload as KamarData);
-      setIsEditing(false);
       router.back();
       onRefresh();
       console.log("Kamar data updated successfully");
@@ -93,65 +88,92 @@ const Index = () => {
   return (
     <SafeAreaProvider>
       <BackHeaders judul="Edit Kamar" />
-      <View className="flex-1 bg-white">
-        <View className="flex-col bg-gray-200 p-4">
-          <Text className="text-xl font-bold text-center">Informasi Kamar</Text>
-          <View className="space-y-4">
+      <ScrollView className="flex-1 bg-neutral-100">
+        <View className="flex-col bg-neutral-100 p-4">
+          <View className="my-2">
+            {payload.ImageUri ? (
+              <Image
+                source={{ uri: payload.ImageUri }}
+                style={{
+                  width: 320,
+                  height: 180,
+                  alignSelf: "center",
+                  marginVertical: 2,
+                  borderRadius: 8,
+                }}
+              />
+            ) : (
+              <View
+                style={{
+                  width: 320,
+                  height: 180,
+                  backgroundColor: "#e1e1e1",
+                  alignSelf: "center",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginVertical: 2,
+                  borderRadius: 8,
+                }}
+              >
+                <Text className="text-gray-400 font-medium text-base">
+                  Belum ada foto
+                </Text>
+              </View>
+            )}
+            <Button
+              title="Pilih Foto Kamar"
+              onPress={pickImage}
+              buttonStyle={{
+                backgroundColor: "#4CAF50",
+                borderRadius: 8,
+                padding: 8,
+              }}
+              titleStyle={{
+                fontWeight: "bold",
+              }}
+              containerStyle={{
+                marginTop: 16,
+                width: "100%",
+              }}
+            />
+          </View>
+          <View className="p-6 shadow-md bg-white rounded-lg">
             <Input
-              type="text"
-              title="Nomor Kamar"
+              keyboardType="number-pad"
+              label="Nomor Kamar"
               value={payload.NoKam?.toString()}
               placeholder="Nomor Kamar"
-              onChange={(text) => handleChange("NoKam", Number(text))}
-              className="border rounded-lg"
-              editable={isEditing}
+              onChangeText={(value) => handleChange("NoKam", Number(value))}
             />
             <Input
-              type="text"
-              title="Harga"
+              keyboardType="number-pad"
+              label="Harga"
               value={payload.Harga?.toString()}
               placeholder="Harga"
-              onChange={(text) => handleChange("Harga", Number(text))}
-              className="border rounded-lg"
-              editable={isEditing}
+              onChangeText={(value) => handleChange("Harga", Number(value))}
             />
-            <View>
-              <Text>Foto Kamar</Text>
-              {payload.ImageUri ? (
-                <Image
-                  source={{ uri: payload.ImageUri }}
-                  style={{
-                    width: 320,
-                    height: 180,
-                    alignSelf: "center",
-                    marginVertical: 4,
-                  }}
-                />
-              ) : (
-                <View
-                  style={{
-                    width: 320,
-                    height: 180,
-                    backgroundColor: "#e1e1e1",
-                    alignSelf: "center",
-                    marginVertical: 4,
-                  }}
-                />
-              )}
-              {isEditing && <Button title="Pilih Foto" onPress={pickImage} />}
-            </View>
           </View>
         </View>
-        <View className="flex-row justify-end p-4">
-          {isEditing ? (
-            <RNEButton onPress={handleSave} title="Simpan" />
-          ) : (
-            <RNEButton onPress={handleEdit} title="Edit" />
-          )}
+        <View className="px-4">
+          <Button
+            title="Simpan"
+            onPress={handleSave}
+            buttonStyle={{
+              backgroundColor: "#41980A",
+              borderRadius: 8,
+              padding: 12,
+            }}
+            titleStyle={{
+              fontWeight: "bold",
+            }}
+            containerStyle={{
+              width: "100%",
+            }}
+          />
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaProvider>
   );
 };
 
-export default Index;
+export default editKamar;

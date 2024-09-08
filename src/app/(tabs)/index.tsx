@@ -1,186 +1,171 @@
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Alert,
-  Image,
-  Platform,
-  SafeAreaView,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
+  RefreshControl,
+  StatusBar,
 } from "react-native";
-
-import Headers from "@/components/layouts/Headers";
+import { LinearGradient } from "expo-linear-gradient";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import {
   AntDesign,
-  Entypo,
   FontAwesome,
-  FontAwesome5,
   Ionicons,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
-import { Link, router } from "expo-router";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import React from "react";
-import { RefreshControl } from "react-native";
 import { countKosan } from "@/api/kosanAPI";
 import { countKamar } from "@/api/kamarAPI";
 import { countPenghuni } from "@/api/PenghuniAPI";
 
+interface MenuItemProps {
+  icon: JSX.Element;
+  label: string;
+  onPress: () => void;
+}
+
+interface StatCardProps {
+  value: number | string;
+  label: string;
+  width?: string;
+  aspectRatio?: string;
+}
+
+const MenuItem: React.FC<MenuItemProps> = ({ icon, label, onPress }) => (
+  <TouchableOpacity
+    className="items-center justify-center h-24 w-[160px] p-1 mb-4 bg-white rounded-2xl shadow-sm shadow-black"
+    onPress={onPress}
+  >
+    <View className="items-center">
+      <View className="mb-1">{icon}</View>
+      <Text className="text-sm text-emerald-500 font-semibold text-center">
+        {label}
+      </Text>
+    </View>
+  </TouchableOpacity>
+);
+
+const StatCard: React.FC<StatCardProps> = ({
+  value,
+  label,
+  width = "w-[48%]",
+  aspectRatio = "aspect-square",
+}) => (
+  <View
+    className={`${width} bg-emerald-500 rounded-3xl p-4 mb-4 items-center justify-center shadow-md ${aspectRatio}`}
+  >
+    <Text className="text-2xl font-bold text-white">{value}</Text>
+    <Text className="text-sm text-white opacity-80 text-center mt-1">
+      {label}
+    </Text>
+  </View>
+);
+
 export default function HomeScreen() {
-  const [refreshing, setRefreshing] = React.useState(false);
-  const [counts, setCounts] = React.useState({
+  const [refreshing, setRefreshing] = useState(false);
+  const [counts, setCounts] = useState({
     kosan: 0,
     kamar: 0,
     penghuni: 0,
   });
 
-  React.useEffect(() => {
-    const fetchCounts = async () => {
-      const [kosanCount, kamarCount, penghuniCount] = await Promise.all([
-        countKosan(),
-        countKamar(),
-        countPenghuni(),
-      ]);
+  const fetchCounts = useCallback(async () => {
+    const [kosanCount, kamarCount, penghuniCount] = await Promise.all([
+      countKosan(),
+      countKamar(),
+      countPenghuni(),
+    ]);
 
-      setCounts({
-        kosan: kosanCount as number,
-        kamar: kamarCount as number,
-        penghuni: penghuniCount as number,
-      });
-    };
-
-    fetchCounts();
-  }, [counts, refreshing]);
-
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
+    setCounts({
+      kosan: kosanCount as number,
+      kamar: kamarCount as number,
+      penghuni: penghuniCount as number,
+    });
   }, []);
+
+  useEffect(() => {
+    fetchCounts();
+  }, [fetchCounts]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchCounts().then(() => setRefreshing(false));
+  }, [fetchCounts]);
 
   return (
     <SafeAreaProvider>
-      <Headers />
+      <StatusBar barStyle="light-content" backgroundColor="#10b981" />
       <ScrollView
-        className="flex-1 bg-gray-200"
+        className="flex-1 bg-gray-100"
         refreshControl={
           <RefreshControl
-            className="bg-emerald-500"
             refreshing={refreshing}
             onRefresh={onRefresh}
+            colors={["#10b981"]}
           />
         }
       >
-        <View className="flex-1">
-          <View className="flex-col bg-emerald-500 relative">
-            <View className="flex-row justify-evenly p-2 pt-5 pb-12 bg-emerald-500">
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => router.navigate("/kost")}
-                className="justify-center items-center gap-1"
-              >
-                <View className="bg-emerald-500 rounded-full p-2 border border-white ">
-                  <View className="h-9 w-9 justify-center items-center">
-                    <AntDesign name="home" size={32} color="white" />
-                  </View>
-                </View>
-                <Text className="text-white">Kost</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => router.navigate("/kamar")}
-                className="justify-center items-center gap-1"
-              >
-                <View className="bg-emerald-500 rounded-full p-2 border border-white ">
-                  <View className="h-9 w-9 justify-center items-center">
-                    <Ionicons name="bed" size={32} color="white" />
-                  </View>
-                </View>
-                <Text className="text-white">Kamar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => router.navigate("/penghuni")}
-                className="justify-center items-center gap-1"
-              >
-                <View className="bg-emerald-500 rounded-full p-2 border border-white ">
-                  <View className="h-9 w-9 justify-center items-center">
-                    <FontAwesome name="user" size={32} color="white" />
-                  </View>
-                </View>
-                <Text className="text-white">Penghuni</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() =>
-                  Alert.alert(
-                    "Fitur belum ada",
-                    "Maaf sekali fitur ini belum ada"
-                  )
-                }
-                className="justify-center items-center gap-1"
-              >
-                <View className="bg-emerald-500 rounded-full p-2 border border-white ">
-                  <View className="h-9 w-9 justify-center items-center">
-                    <MaterialCommunityIcons
-                      name="dots-grid"
-                      size={32}
-                      color="white"
-                    />
-                  </View>
-                </View>
-                <Text className="text-white">Lainnya</Text>
-              </TouchableOpacity>
-            </View>
-            <View className="flex justify-center bg-gray-200 pt-1 pb-4 mt-28 absolute left-6 right-6 rounded-lg border border-gray-400">
-              <View className="my-2 p-4">
-                <Text className="text-2xl font-bold">Selamat Datang!</Text>
-              </View>
-              <View className="flex-row justify-between mx-5">
-                <View>
-                  <View>
-                    <Text className="text-lg font-medium">
-                      Kosmana adalah aplikasi Kost untuk mempermudah pendataan
-                      Kost Anda
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
+        <LinearGradient
+          colors={["#10b981", "#059669"]}
+          className="px-5 pt-12 pb-16 rounded-b-[30px]"
+        >
+          <Text className="text-3xl font-bold text-white">Kosmana</Text>
+          <Text className="text-base text-white opacity-80">
+            Manajemen Kost Mudah
+          </Text>
+        </LinearGradient>
+
+        <View className="px-4 -mt-10">
+          <View className="flex-row flex-wrap justify-between">
+            <MenuItem
+              icon={<AntDesign name="home" size={24} color="#10b981" />}
+              label="Kost"
+              onPress={() => router.navigate("/kost")}
+            />
+            <MenuItem
+              icon={<Ionicons name="bed" size={24} color="#10b981" />}
+              label="Kamar"
+              onPress={() => router.navigate("/kamar/null")}
+            />
+            <MenuItem
+              icon={<FontAwesome name="user" size={24} color="#10b981" />}
+              label="Penghuni"
+              onPress={() => router.navigate("/penghuni")}
+            />
+            <MenuItem
+              icon={
+                <MaterialCommunityIcons
+                  name="dots-grid"
+                  size={24}
+                  color="#10b981"
+                />
+              }
+              label="Lainnya"
+              onPress={() => Alert.alert("Fitur belum tersedia")}
+            />
           </View>
-        </View>
-        <View className="flex mt-24">
-          <View className="mt-16">
-            <View className="my-2">
-              <View className="flex-row justify-evenly">
-                <View className="bg-emerald-200 rounded-3xl p-4 gap-y-6 w-[42%] h-max justify-center items-center ">
-                  <View className="justify-center items-center">
-                    <Text className="font-bold text-6xl">{counts.kosan}</Text>
-                  </View>
-                  <View>
-                    <Text className="text-md font-medium">jumlah kosan</Text>
-                  </View>
-                </View>
-                <View className="bg-emerald-200 rounded-3xl p-4 gap-y-6 w-[42%] h-max justify-center items-center ">
-                  <View className="justify-center items-center">
-                    <Text className="font-bold text-6xl">{counts.kamar}</Text>
-                  </View>
-                  <View>
-                    <Text className="text-md font-medium">jumlah kamar</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-            <View>
-              <View className="flex flex-row m-5 p-6 bg-emerald-200 rounded-3xl justify-around items-center">
-                <View className="justify-center items-center">
-                  <Text className="font-bold text-6xl">{counts.penghuni}</Text>
-                </View>
-                <View>
-                  <Text className="text-md font-medium">Jumlah Penghuni</Text>
-                </View>
-              </View>
-            </View>
+          <View className="bg-white rounded-3xl p-5 mb-6 shadow-md">
+            <Text className="text-2xl font-bold text-gray-800 mb-2">
+              Selamat Datang!
+            </Text>
+            <Text className="text-base text-gray-500 font-medium">
+              Kosmana adalah aplikasi yang mempermudah pendataan Kost Anda,
+              membantu mengelola informasi penyewa dan kamar dengan efisien.
+            </Text>
+          </View>
+
+          <View className="flex-row flex-wrap justify-between">
+            <StatCard value={counts.kosan} label="Jumlah Kosan" />
+            <StatCard value={counts.kamar} label="Jumlah Kamar" />
+            <StatCard
+              value={counts.penghuni}
+              label="Jumlah Penghuni"
+              width="w-full h-[30%]"
+              aspectRatio=""
+            />
           </View>
         </View>
       </ScrollView>

@@ -46,6 +46,32 @@ export const useGetAllPenghuniKamar = async (): Promise<DetailKamarData[]> => {
   }
 };
 
+export const useGetPenghuniKamarByPenghuniId = async (
+  penghuniId: number
+): Promise<PenghuniKamarData[]> => {
+  try {
+    return new Promise((resolve, reject) => {
+      db.transaction((tx) => {
+        tx.executeSql(
+          "SELECT * FROM Penghuni_Kamar WHERE PenghuniId = ?",
+          [penghuniId],
+          (_, { rows }) => {
+            resolve(rows._array as PenghuniKamarData[]);
+          },
+          (tx: SQLTransaction, error: SQLError) => {
+            console.error("SQL Error: ", error);
+            reject(error);
+            return false;
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error("Error fetching PenghuniKamar by PenghuniId: ", error);
+    throw error;
+  }
+};
+
 export const useGetPenghuniKamarById = async (
   id: number
 ): Promise<PenghuniKamarData | null> => {
@@ -120,7 +146,8 @@ export const useCreatePenghuniKamar = async (
 };
 
 export const useUpdatePenghuniKamar = async (
-  data: PenghuniKamarData
+  data: PenghuniKamarData,
+  Id: number
 ): Promise<void> => {
   if (data.Id === undefined) {
     throw new Error("Cannot update PenghuniKamar: Id is undefined");
@@ -137,7 +164,7 @@ export const useUpdatePenghuniKamar = async (
             data.TanggalMasuk,
             data.TanggalKeluar,
             data.StatusPembayaran,
-            data.Id!,
+            Id,
           ],
           // This is the success callback
           () => resolve(),

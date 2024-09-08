@@ -4,13 +4,7 @@ import { useGetAllPenghuniKamar } from "@/api/Penghuni_KamarAPI";
 import { useGetAllKosan } from "@/api/kosanAPI";
 import { useGetAllKamar } from "@/api/kamarAPI";
 import { useGetAllPenghuni } from "@/api/PenghuniAPI";
-import { fetchId } from "@/hooks/kosanHook";
-import {
-  KosanData,
-  KamarData,
-  PenghuniData,
-  DetailKamarData,
-} from "@/types/DBtypes";
+import { KosanData, KamarData, DetailKamarData } from "@/types/DBtypes";
 
 export const useKamarData = () => {
   const [loading, setLoading] = useState<boolean>(true);
@@ -18,42 +12,37 @@ export const useKamarData = () => {
   const [listPenghuniKamar, setListPenghuniKamar] = useState<DetailKamarData[]>(
     []
   );
+  const [dataLoaded, setDataLoaded] = useState<boolean>(false);
   const [listKosan, setListKosan] = useState<KosanData[]>([]);
-  const [listPenghuni, setListPenghuni] = useState<PenghuniData[]>([]);
   const [kosan, setKosan] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [kosanData, penghuniKamarData, penghuniData, kamarData] =
-        await Promise.all([
-          useGetAllKosan(),
-          useGetAllPenghuniKamar(),
-          useGetAllPenghuni(),
-          useGetAllKamar(),
-        ]);
-
+      const [kosanData, penghuniKamarData, kamarData] = await Promise.all([
+        useGetAllKosan(),
+        useGetAllPenghuniKamar(),
+        useGetAllKamar(),
+      ]);
       setListKosan(kosanData);
       setListPenghuniKamar(
-        kosan
+        kosan !== null
           ? penghuniKamarData.filter((kamar) => kamar.KosanId === Number(kosan))
           : penghuniKamarData
       );
-      setListPenghuni(penghuniData);
       setListKamar(
-        kosan
+        kosan !== null
           ? kamarData.filter((kamar) => kamar.KosanId === Number(kosan))
           : kamarData
       );
-      console.log("kosan di hook:" + kosan);
-      console.log("list kosan: ");
+      setDataLoaded(true); // Set dataLoaded to true after data has been loaded
     } catch (error) {
       console.error("Error fetching data:", error);
       Alert.alert("Error", "Failed to fetch data. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [kosan]); // Ensure kosan is included here
+  }, [kosan]);
 
   useEffect(() => {
     fetchData();
@@ -71,6 +60,7 @@ export const useKamarData = () => {
     loading,
     kosan,
     refreshing,
+    dataLoaded,
     onRefresh,
     setKosan,
   };

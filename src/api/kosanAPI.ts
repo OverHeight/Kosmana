@@ -69,7 +69,7 @@ export const useCreateKosan = async (data: KosanData): Promise<number> => {
             data.Kota,
             data.Alamat,
             data.Harga,
-            data.JumlahKamar,
+            (data.JumlahKamar = 0),
             data.TipeKosan,
             data.ImageUri,
           ],

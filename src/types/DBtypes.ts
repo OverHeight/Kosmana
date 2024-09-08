@@ -37,7 +37,7 @@ export interface KosanData {
   NamaKosan: string;
   Kota: string;
   Alamat: string;
-  Harga: number;
+  Harga: number | null;
   JumlahKamar: number;
   TipeKosan: string;
   ImageUri: string;
@@ -46,9 +46,9 @@ export interface KosanData {
 export interface PenghuniData {
   Id?: number;
   Nama: string;
-  Umur: number;
-  JenisKelamin: string;
+  Umur: number | null;
+  JenisKelamin: string | null;
   NoTelp: string;
-  FotoPenghuni?: string | null;
-  FotoKTP?: string | null;
+  FotoPenghuni?: string;
+  FotoKTP?: string;
 }

@@ -39,17 +39,6 @@ const Input: React.FC<Props> = ({
   style,
   inputStyle,
 }) => {
-  const formatNumber = (value: string) => {
-    const number = parseFloat(value.replace(/,/g, ""));
-    if (isNaN(number)) return "";
-    return number.toLocaleString("en-US");
-  };
-
-  const handleChange = (text: string) => {
-    const number = text.replace(/,/g, "");
-    onChange(formatNumber(number));
-  };
-
   if (type === "text") {
     return (
       <View style={[styles.container, style]}>
@@ -70,9 +59,9 @@ const Input: React.FC<Props> = ({
       <View style={[styles.container, style]}>
         <Text style={styles.label}>{title}</Text>
         <TextInput
-          value={value ? value : ""}
+          value={value}
           placeholder={placeholder}
-          onChangeText={handleChange}
+          onChangeText={(value) => onChange(value)}
           style={[styles.input, inputStyle]}
           editable={editable}
           keyboardType="numeric"
@@ -120,12 +109,15 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
+    color: "gray",
+    fontWeight: "bold",
     marginBottom: 8,
   },
   input: {
-    padding: 8,
-    backgroundColor: "#e0e0e0",
+    padding: 6,
     borderRadius: 4,
+    borderBottomWidth: 1,
+    fontSize: 16,
   },
   picker: {
     padding: 8,

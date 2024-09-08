@@ -113,10 +113,8 @@ export const useUpdateKamar = async (data: KamarData): Promise<void> => {
     await new Promise<void>((resolve, reject) => {
       db.transaction((tx) => {
         tx.executeSql(
-          "UPDATE Kamar SET KosanId = ?, StatusKamar = ?, NoKam = ?, Harga = ?, ImageUri = ? WHERE Id = ?",
+          "UPDATE Kamar SET NoKam = ?, Harga = ?, ImageUri = ? WHERE Id = ?",
           [
-            data.KosanId,
-            data.StatusKamar ?? 0,
             data.NoKam ?? null,
             data.Harga ?? null,
             data.ImageUri ?? null,
@@ -126,7 +124,7 @@ export const useUpdateKamar = async (data: KamarData): Promise<void> => {
           (tx: SQLTransaction, error: SQLError) => {
             console.error("SQL Error: ", error);
             reject(error);
-            return false; // Return false to indicate failure
+            return false;
           }
         );
       });
@@ -141,43 +139,60 @@ export const useDeleteKamar = async (
   id: number,
   kosanId: number
 ): Promise<void> => {
-  try {
-    return new Promise<void>((resolve, reject) => {
-      db.transaction((tx) => {
-        // Delete the Kamar
-        tx.executeSql(
-          "DELETE FROM Kamar WHERE id = ?",
-          [id],
-          (_, result) => {
-            // Check if the delete operation was successful
-            if (result.rowsAffected > 0) {
-              // Decrement the JumlahKamar in the Kosan table
-              tx.executeSql(
-                "UPDATE Kosan SET JumlahKamar = JumlahKamar - 1 WHERE Id = ?",
-                [kosanId],
-                () => resolve(),
-                (tx: SQLTransaction, error: SQLError) => {
-                  console.error("Failed to decrement JumlahKamar: ", error);
-                  reject(error);
-                  return false;
-                }
-              );
-            } else {
-              resolve(); // Kamar was not found or deleted
-            }
-          },
-          (tx: SQLTransaction, error: SQLError) => {
-            console.error("SQL Error: ", error);
-            reject(error);
-            return false;
+  return new Promise<void>((resolve, reject) => {
+    db.transaction((tx) => {
+      // First, check if there are any transactions associated with this Kamar
+      tx.executeSql(
+        "SELECT COUNT(*) as count FROM Penghuni_Kamar WHERE KamarId = ?",
+        [id],
+        (_, result) => {
+          const transactionCount = result.rows.item(0).count;
+          if (transactionCount > 0) {
+            // If there are transactions, reject the deletion
+            reject(new Error("Cannot delete Kamar with existing transactions"));
+            return;
           }
-        );
-      });
+
+          // If no transactions, proceed with deletion
+          tx.executeSql(
+            "DELETE FROM Kamar WHERE id = ?",
+            [id],
+            (_, deleteResult) => {
+              // Check if the delete operation was successful
+              if (deleteResult.rowsAffected > 0) {
+                // Decrement the JumlahKamar in the Kosan table
+                tx.executeSql(
+                  "UPDATE Kosan SET JumlahKamar = JumlahKamar - 1 WHERE Id = ?",
+                  [kosanId],
+                  () => resolve(),
+                  (tx, error) => {
+                    console.error("Failed to decrement JumlahKamar: ", error);
+                    reject(error);
+                    return false;
+                  }
+                );
+              } else {
+                resolve(); // Kamar was not found or deleted
+              }
+            },
+            (tx, error) => {
+              console.error("SQL Error during deletion: ", error);
+              reject(error);
+              return false;
+            }
+          );
+        },
+        (tx, error) => {
+          console.error("SQL Error checking transactions: ", error);
+          reject(error);
+          return false;
+        }
+      );
     });
-  } catch (error) {
+  }).catch((error) => {
     console.error("Error Deleting Kamar: ", error);
     throw error;
-  }
+  });
 };
 
 export const updateStatusKamar = async (

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -10,11 +10,11 @@ import {
 } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
-import { Entypo } from "@expo/vector-icons";
+import { AntDesign, Entypo } from "@expo/vector-icons";
 import BackHeaders from "@/components/layouts/BackHeaders";
 import KamarList from "@/components/Lists/KamarList";
 import { useKamarData } from "@/hooks/useKamarData";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCreateKamar, useDeleteKamar } from "@/api/kamarAPI";
 
 const Kamar = () => {
@@ -26,12 +26,21 @@ const Kamar = () => {
     kosan,
     loading,
     refreshing,
+    dataLoaded,
     onRefresh,
     setKosan,
   } = useKamarData();
+  const { id } = useLocalSearchParams();
+
+  useEffect(() => {
+    console.log("Id: ", Number(id));
+    if (!isNaN(Number(id))) {
+      setKosan(Number(id));
+    }
+  }, []);
 
   const handleAddKamar = async () => {
-    if (kosan === 0) {
+    if (kosan === 0 || null) {
       Alert.alert("Gagal", "Pilih kamar terlebih dahulu!");
       return null;
     }
@@ -52,14 +61,34 @@ const Kamar = () => {
       console.error("Error navigating to editKamar:", error);
     }
   };
-
   const handleDeleteKamar = async (id: number, kosanId: number) => {
     try {
       await useDeleteKamar(id, kosanId);
       Alert.alert("Sukses", "Kamar telah dihapus");
       onRefresh(); // Refresh data after deleting a kamar
     } catch (error) {
-      Alert.alert("Error", "Error Sistem!");
+      if (error instanceof Error) {
+        if (
+          error.message === "Cannot delete Kamar with existing transactions"
+        ) {
+          Alert.alert(
+            "Tidak dapat menghapus",
+            "Kamar ini memiliki transaksi yang terkait dan tidak dapat dihapus."
+          );
+        } else {
+          console.error("Error deleting Kamar:", error);
+          Alert.alert(
+            "Error",
+            "Terjadi kesalahan saat menghapus kamar. Silakan coba lagi nanti."
+          );
+        }
+      } else {
+        console.error("Unknown error:", error);
+        Alert.alert(
+          "Error",
+          "Terjadi kesalahan yang tidak diketahui. Silakan coba lagi nanti."
+        );
+      }
     }
   };
 
@@ -76,7 +105,7 @@ const Kamar = () => {
   const handleDots = (kamarId: number) => {
     Alert.alert(
       "Pilih tindakan",
-      "Apakah Anda ingin menghapus kamar atau kamar?",
+      "Apakah Anda ingin Mengedit Kamar atau Menghapus kamar?",
       [
         {
           text: "Edit Kamar",
@@ -86,7 +115,7 @@ const Kamar = () => {
           text: "Hapus Kamar",
           onPress: () => handleDeleteKamar(kamarId, Number(kosan)),
         },
-        { text: "Cancel" },
+        { text: "Batal" },
       ]
     );
   };
@@ -96,7 +125,7 @@ const Kamar = () => {
       <SafeAreaProvider>
         <BackHeaders judul={"Kamar"} />
         <View className="flex-1 bg-white justify-center items-center">
-          <ActivityIndicator size="large" color="#0000ff" />
+          <ActivityIndicator size="large" color="#7CFC00" />
         </View>
       </SafeAreaProvider>
     );
@@ -133,7 +162,7 @@ const Kamar = () => {
                   <Picker.Item
                     label="Pilih Kosan"
                     enabled={pilihKosan}
-                    value={0}
+                    value={null}
                   />
                   {listKosan.map((e) => (
                     <Picker.Item
@@ -154,17 +183,29 @@ const Kamar = () => {
             </View>
           </View>
         )}
-        {kosan ? (
-          <KamarList
-            listPenghuniKamar={listPenghuniKamar}
-            onDotPress={handleDots}
-          />
+        {dataLoaded ? (
+          kosan !== null ? (
+            <KamarList
+              listPenghuniKamar={listPenghuniKamar}
+              onDotPress={handleDots}
+            />
+          ) : (
+            <View className="flex-1 my-6 justify-center p-2 items-center">
+              <View className="flex bg-emerald-500 p-4 rounded-lg gap-y-2 justify-center items-center">
+                <AntDesign
+                  name="caretcircleoup"
+                  size={24}
+                  color="white"
+                  className="self-center"
+                />
+                <Text className="text-lg font-bold text-white text-center mb-2">
+                  Silahkan Pilih Kosan Terlebih Dahulu!
+                </Text>
+              </View>
+            </View>
+          )
         ) : (
-          <View className="flex-1 justify-center items-center">
-            <Text className="text-lg font-semibold">
-              Silakan Pilih kosan terlebih dahulu!
-            </Text>
-          </View>
+          <Text>Loading!!</Text>
         )}
       </ScrollView>
     </SafeAreaProvider>

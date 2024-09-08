@@ -35,7 +35,7 @@ const KamarList: React.FC<KamarListProps> = ({
           return (
             <View
               key={e.KamarId}
-              className="flex-col rounded-lg justify-center m-4 bg-white shadow-xl"
+              className="flex-col rounded-lg justify-center m-4 bg-white "
             >
               <View className="rounded-full">
                 <ImageBackground
@@ -44,6 +44,9 @@ const KamarList: React.FC<KamarListProps> = ({
                   placeholder={{ blurhash }}
                   contentFit="cover"
                   transition={800}
+                  imageStyle={{
+                    borderRadius: 8,
+                  }}
                 >
                   <View className="flex-1 justify-start items-end">
                     <Pressable
@@ -57,7 +60,7 @@ const KamarList: React.FC<KamarListProps> = ({
                     </Pressable>
                   </View>
                   <View className="flex-1 justify-end items-end">
-                    <View className="bg-emerald-600 px-4 py-1 rounded-xl">
+                    <View className="bg-emerald-600 px-4 py-1 rounded-xl shadow-md shadow-black">
                       <Pressable
                         onPress={
                           e.StatusKamar
@@ -68,11 +71,16 @@ const KamarList: React.FC<KamarListProps> = ({
                                   [
                                     {
                                       text: "Hapus Penghuni",
-                                      onPress: () =>
+                                      onPress: () => {
                                         useDeletePenghuniKamar(
                                           e.TransId,
                                           e.KamarId
                                         ),
+                                          Alert.alert(
+                                            "Sukses",
+                                            "Berhasil menghapus penghuni dari kamar, silahkan refresh"
+                                          );
+                                      },
                                     },
                                     {
                                       text: "Edit Penghuni",
